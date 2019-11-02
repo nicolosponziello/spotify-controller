@@ -1,8 +1,8 @@
 
 
 var utils =  require('./utils')
-var userUtils = require('./usersUtils')
-var con = require('./const')
+var userList = require('./userList')
+var spotify_uri = require('./const')
 var axios = require('axios').default;
 var qs = require('qs');
 var fs = require('fs');
@@ -14,7 +14,7 @@ class SpotifyController {
         this.client_id = client_id
         this.redirect_uri = redirect_uri
         this.client_secret = client_secret
-        this.users = Array()
+        this.users = new userList()
     }
 
 
@@ -28,7 +28,9 @@ class SpotifyController {
             "show_dialog": true
         }
 
-        res.redirect(301, utils.encodeQueryParams(con.SPOTIFY_AUTHORIZE, query_params))
+        console.log(utils.encodeQueryParams(spotify_uri.SPOTIFY_AUTHORIZE, query_params))
+        return utils.encodeQueryParams(spotify_uri.SPOTIFY_AUTHORIZE, query_params)
+        r//es.redirect(301, utils.encodeQueryParams(con.SPOTIFY_AUTHORIZE, query_params))
     }
 
     async callback(req, res){
@@ -49,15 +51,17 @@ class SpotifyController {
             var status_code, user_devices = await this.getUserDevices(user_authentication_data.access_token)
             if (status_code != 200) res.sendStatus(status_code)
 
-            var user_found = userUtils.isUserPresen(this.users, user_info.id)
+            var user_found = users.isUserPresen(this.users, user_info.id)
 
             if (!user_found) {
-                userUtils.createUser(this.users, user_info.id, user_info.name, user_authentication_data.access_token, user_authentication_data.refesh_token, user_devices.data.devices)
+                this.users.createUser(this.users, user_info.id, user_info.name, user_authentication_data.access_token, user_authentication_data.refesh_token, user_devices.data.devices)
             } else {
-                userUtils.updateUser(this.users, user.info.id, user_authentication_data.access_token, user_authentication_data.refesh_token, user_devices.data.devices)   
+                this.users.updateUser(this.users, user.info.id, user_authentication_data.access_token, user_authentication_data.refesh_token, user_devices.data.devices)   
             }
 
-            res.status(200).send(userUtils.getUserJson(this.users, user_info.name))
+            console.log(users.getUserInfoJsonFormat(this.users, user_info.name))
+            return users.getUserInfoJsonFormat(this.users, user_info.name)
+            //res.status(200).send(userList.getUserJson(this.users, user_info.name))
 
             
 
@@ -74,7 +78,7 @@ class SpotifyController {
             "client_secret": this.client_secret
         };
         try {
-            authentication_response = await axios.post(con.SPOTIFY_AUTHENTICATION, qs.stringify(post_body),)
+            authentication_response = await axios.post(spotify_uri.SPOTIFY_AUTHENTICATION, qs.stringify(post_body),)
             return 200, authentication_response.data
         } catch (error) {
             console.log('AUTHENTICATION - ERROR', error)
@@ -87,7 +91,7 @@ class SpotifyController {
         var header = utils.buildHeader(access_token)
         var spotify_response = ''
         try {
-            spotify_response = await axios.get(con.SPOTIFY_USER_INFO, header)
+            spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_INFO, header)
             return 200, spotify_response.data
         } catch (error) {
             console.log('GET USER INFO - ERROR', error)
@@ -99,7 +103,7 @@ class SpotifyController {
         var header = utils.buildHeader(access_token)
         var spotify_response = ''
         try {
-            spotify_response = await axios.get(con.SPOTIFY_USER_DEVICES, header)
+            spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_DEVICES, header)
             return 200, spotify_response.data
         } catch (error) {
             console.log('GET USER INFO - ERROR', error)
