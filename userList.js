@@ -1,39 +1,54 @@
 
 
-var user = require('./user')
+var us = require('./user')
 
 class UserList {
 
     constructor() {
-        this.userList = new Array()
+        this.users = new Array()
     }
 
 
-    async updateUser(users, id, access_token, refresh_token, devices){
-        await users.forEach(user => {
+    async isUserPresent(id) {
+        var user_found = await this.users.filter((x) => x.getId() == id)
+        if(user_found.length > 0) return true
+        else false
+    }
+
+    async updateUser(id, access_token, refresh_token, devices){
+        await this.users.forEach(user => {
             if(user.getId() == id){
                 user.setAccessToken(access_token)
                 user.setRefreshToken(refresh_token)
+                user.setDevices(devices)
             }
         });
     }
 
-    async createUser(users, id, name, access_token, refresh_token){
-        users.push(new User(id, name, access_token, refresh_token))
+    async createUser( id, name, access_token, refresh_token, devices){
+        await this.users.push(new us(id, name, access_token, refresh_token, devices))        
     }
 
-    async getUser(users, name) {
-        return await users.filter(user => user.getName() == name)
+    async getUser(id) {
+        var  user = await this.users.filter(user => user.getId() == id)
+        return user
     }
 
-    async getUserInfoJsonFormat(users, name) {
-        var user = this.getUser(users, name)
-        return {
-            "user_id" : user.getId(),
-            "user_name" : user.getName(),
-            "devices" : user.getDevices()
-        }
+    async getUserAccessToken(id){
+        var user = await this.getUser(id).getAccessToken()
+        return user
     }
+
+    async getUserRefreshToken(id){
+        var user = await this.getUser(id).getRefreshToken()
+        return user
+    }
+
+    async setUserAccessToken(id, access_token){
+        var user = await this.getUser(id)
+        this.updateUser(id, access_token, user.getRefreshToken(), user.getDevices())
+    }
+
 
     
     

@@ -7,7 +7,7 @@ function encodeQueryParams(uri, params) {
 }
 
 function buildHeader(header_value){
-    return {"header" : {"Authorization": "Bearer "+ String(header_value)}};
+    return {"headers" : {"Authorization": "Bearer "+ String(header_value)}};
 }
 
 
