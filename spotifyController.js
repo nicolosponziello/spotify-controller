@@ -5,8 +5,6 @@ var userList = require('./userList')
 var spotify_uri = require('./const')
 var axios = require('axios').default;
 var qs = require('qs');
-var fs = require('fs');
-
 
 class SpotifyController {
 
@@ -40,18 +38,18 @@ class SpotifyController {
             var user_authentication_data = await this.authentication(request_data.code)
             console.log("CALLBACK - AUTHENTICATION RESPONSE" )
             console.log(user_authentication_data)
-            if(user_authentication_data.status_code !== 200) res.sendStatus(user_info.status_code)
+            if(user_authentication_data.status_code !== 200) return user_info.status_code
             
             var user_info = await this.getUserInfo(user_authentication_data.data.access_token)
             console.log("CALLBACK - GET USER INFO RESPONSE" )
             console.log(user_info)
-            if(user_info.status_code!== 200) res.sendStatus(user_info.status_code)
+            if(user_info.status_code!== 200) return user_info.status_code
             
 
             var user_devices = await this.getUserDevices(user_authentication_data.data.access_token)
             console.log("CALLBACK - GET USER DEVICE RESPONSE")
             console.log(user_devices)
-            if (user_devices.status_code != 200) res.sendStatus(user_devices.status_code)
+            if (user_devices.status_code != 200) return user_devices.status_code
 
             var user_found = await this.users.isUserPresent(user_info.id)
 
@@ -75,11 +73,11 @@ class SpotifyController {
         };
         try {
             authentication_response = await axios.post(spotify_uri.SPOTIFY_AUTHENTICATION, qs.stringify(post_body),)
-            var status_code = authentication_response.status
-            if(authentication_response.status == 200) return {"status_code" : status_code, "data" :authentication_response.data};
+            console.log("AUTHENTICATION")
+            if(authentication_response.status == 200) return {"status_code" : authentication_response.status, "data" :authentication_response.data};
         } catch (error) {
             console.log('AUTHENTICATION - ERROR', error)
-            return error.status, 'error'
+            return {"status_code" : error.status, "data" : 'error'}
         }
     } 
     
@@ -89,10 +87,11 @@ class SpotifyController {
         var spotify_response = ''
         try {
             spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_INFO, header)
+            console.log("GET USER INFO")
             if (spotify_response.status == 200) return {"status_code" : spotify_response.status, "data" : spotify_response.data}
         } catch (error) {
             console.log('GET USER INFO - ERROR', error)
-            return error.status, 'error'
+            return {"status_code" : error.status, "data" : 'error'}
         }
     }
 
@@ -103,23 +102,13 @@ class SpotifyController {
             spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_DEVICES, header)
             if (spotify_response.status == 200) return {"status_code" : spotify_response.status, "data" : spotify_response.data}
         } catch (error) {
-            console.log('GET USER INFO - ERROR', error)
-            return error.status, 'error'
+            console.log('GET USER DEVICE - ERROR', error)
+            return {"status_code" : error.status, "data" : 'error'}
         }
     }
 
-    async generateDeviceList(devices_json){
-        var devices = Array()
-        for(var i = 0 ; i < devices_json.length; i++ ){
-            devices.push({"name": devices_json[i].name, "id": devices_json[i].id, "active": devices_json[i].is_active})
-        }
-        return devices
-    }
-
-
-    async refresh_token(id){
-        var user_refresh_token = this.users.getUserRefreshToken(id)
-
+    async refreshToken(id){
+        var user_refresh_token = await this.users.getUserRefreshToken(id)
         var post_body = {
             "grant_type": "refresh_token",
             "refresh_token": user_refresh_token,
@@ -127,123 +116,155 @@ class SpotifyController {
             "client_secret": this.client_secret
         }   
         try {
-            var spotify_response = await axios.post('https://accounts.spotify.com/api/token', qs.stringify(request_body));
+            var spotify_response = await axios.post(spotify_uri.SPOTIFY_AUTHENTICATION, qs.stringify(post_body));
             if(spotify_response.status === 200){
+                console.log("REFRESH TOKEN - token refreshed, new access token: ", spotify_response.data.access_token)
                 this.users.setUserAccessToken(id, spotify_response.data.access_token)
                 return {"status_code" : spotify_response.status}
             }
         } catch (error) {
-            
+            console.log('REFRESH TOKEN - ERROR', error)
+            return {"status_code" : error.status, "data" : 'error'}
         }
         
     }
 
-    async playSong(id, spotify_uri, device_id, volume_percent){
+    async checkDeviceActive(access_token, device_id){
+        var isPlayerActive = false
+        while(!isPlayerActive){
+            var user_devices = await this.getUserDevices(access_token)
+            if(user_devices.status_code !== 200) return user_devices.status_code
+            for(var i = 0 ; i < user_devices.data.devices.length ; i++){
+                if(user_devices.data.devices[i].id == device_id && user_devices.data.devices[i].is_active) {
+                    console.log("CHECK ACTIVE DEVICE - device: ", device_id, " is active")
+                    isPlayerActive = true
+                }
+            }
+        } 
+    }
+
+    async setPlayerDevice(id, device_id){
+            var user_access_token = await this.users.getUserAccessToken(id)
+            var header = await utils.buildHeader(user_access_token)
+
+            var device_ids = Array()
+            await device_ids.push(device_id)
+
+            var active_player_body = {
+                 "device_ids": device_ids
+            }
+            active_player_body = JSON.stringify(active_player_body)
+            try {
+                var spotify_response = await axios.put(spotify_uri.SPOTIFY_SET_PLAYER, active_player_body, header)
+                console.log("SET PLAYER DEVICE - device id: ", device_id)
+                if (spotify_response.status == 204)  return {"status_code" : spotify_response.status}
+
+            } catch (error) {
+                console.log('SET DEVICE PLAYER - ERROR', error)
+                return {"status_code" : error.status, "data" : 'error'}
+            }
+    }
+
+    async setVolumePercent(id, device_id, volume_percent){
+        var get_user_devices_response = await this.getUserDevices(await this.users.getUserAccessToken(id))
+        var header = await utils.buildHeader(await this.users.getUserAccessToken(id))
+        if(get_user_devices_response.status_code != 200) return get_user_devices_response.status_code        
+        this.users.updateUser(id, await this.users.getUserAccessToken(id), await this.users.getUserRefreshToken(id), get_user_devices_response.data)
+
+        if(!this.users.isDevicePresent(id, device_id)) return {"status_code" : 404, "data" : "device not found"}
+        var query_params = {
+            "volume_percent": volume_percent,
+            "device_id":device_id
+        }
+        var url = utils.encodeQueryParams(spotify_uri.SPOTIFY_SET_VOLUME, query_params)
+        try {
+            var spotify_response = await axios.put(url, {}, header)
+            console.log("SET VOLUME PERCENT - device id: ", device_id, " volume: ", volume_percent, " %")
+
+            if(spotify_response.status == 204) return {"status_code" : spotify_response.status, "data" : spotify_response.data }
+        } catch (error) {
+            console.log('SET DEVICE PLAYER - ERROR', error)
+            return {"status_code" : error.status, "data" : 'error'}
+        }
+
+
+    }
+    async getTrackInfo(id, spotify_uri_track){
+        var header = await utils.buildHeader(await this.users.getUserAccessToken(id))
+        var track = await spotify_uri_track.split(':')[2]
+        var url = await utils.buildURI(spotify_uri.SPOTIFY_TRACK_INFO, track)
+        try {
+            var spotify_response = await axios.get(url, header)
+            if(spotify_response.status == 200) {
+                console.log("GET TRACK INFO - Track name: ", spotify_response.data.name, "Artist: ", spotify_response.data.artists[0].name)
+                return {"status_code" : spotify_response.status, "data" : spotify_response.data.name + spotify_response.data.artists[0].name }
+            }
+        } catch (error) {
+            console.log('GET TRACK INFO - ERROR', error)
+            return {"status_code" : error.status, "data" : 'error'}
+        }
+        
+    }
+
+    async playTrack(id, spotify_uri_track, device_id, volume_percent){
         var user_id = id;
-        var spotify_uri = spotify_uri;
+        var spotify_uri_track = spotify_uri_track;
         var device_id = device_id;
         var volume_percent = volume_percent;
 
-        if ( (user_id === null) || (spotify_uri === null) || (spotify_uri === '') ) {
+        if ( (user_id === null) || (spotify_uri === null) || (user_id === undefined) || (spotify_uri === undefined)) {
             console.log('PLAY - MISSING PARAMETERS!');
             res.status(400).end()
-        } else {
-            var refresh = await this.refresh_token(id)   
-            if(refresh.status_code !== 200) res.sendStatus(refresh.status_code)
+        } else {   
+            var refresh_token_response = await this.refreshToken(user_id)
+            if(refresh_token_response.status_code !== 200) return {"status_code" : refresh_token_response.status_code}
+            var header = await utils.buildHeader(await this.users.getUserAccessToken(user_id))
+            if(device_id != null || device_id != undefined){
+                var set_player_device_response = await this.setPlayerDevice(user_id, device_id)
+                if(set_player_device_response.status_code !== 204) return set_player_device_response.status_code
 
+            } 
+            if(volume_percent != null || volume_percent != undefined){
+                var set_volume_response = await this.setVolumePercent(user_id, device_id, volume_percent)
+                if(set_volume_response.status_code !== 204) return set_volume_response.status_code
+            }
+            var track_info_response = await this.getTrackInfo(user_id, spotify_uri_track)
+            if(track_info_response.status_code !== 200) return track_info_response.status_code
+            try {
+                await this.checkDeviceActive(await this.users.getUserAccessToken(user_id), device_id)
+                var play_body = { "uris":[spotify_uri_track] }
+                var spotify_response = await axios.put(spotify_uri.SPOTIFY_PLAY_TRACK, play_body, header)
+
+                if(spotify_response.status === 204) return {"status_code" : spotify_response.status, "data" : track_info_response.data }
+            } catch (error) {
+                console.log('PLAY TRACK - ERROR', error)
+                return {"status_code" : error.status, "data" : 'error'}
+                
+            }
         }
+    }  
 
+    async pauseTrack(id){
+        var user_id = id
+        if ( (user_id === null) || (user_id === '') ) {
+            console.log('PAUSE - MISSING PARAMETERS!');
+            res.status(400).end()
+        } else {
+            var refresh_token_response = await this.refreshToken(user_id)
+            if(refresh_token_response.status_code !== 200) return {"status_code" : refresh_token_response.status_code}
+            var header = await utils.buildHeader(await this.users.getUserAccessToken(user_id))
+            try {
+                var spotify_response = await axios.put(spotify_uri.SPOTIFY_PAUSE_TRACK, {}, header)
+                if(spotify_response.status == 204) {
+                    console.log("PAUSE - PAUSE COMPLETE")
+                    return {"status_code" : spotify_response.status}  
+                } 
+            } catch (error) {
+                console.log('PAUSE TRACK - ERROR', error)
+                return {"status_code" : error.status, "data" : 'error'}
+            }
+        }
     }
-
-            // REFRESH
-    //         var request_body = {
-    //             "grant_type": "refresh_token",
-    //             "refresh_token": usersDict[user_id]["refresh_token"],
-    //             "client_id": CLIENT_ID,
-    //             "client_secret": CLIENT_SECRET
-    //         }
-    //         console.log('PLAY - UPDATING TOKEN BELONGING TO' + user_id)
-    //         var authentication_response = await axios.post('https://accounts.spotify.com/api/token', qs.stringify(request_body));
-
-    //         var authentication_params = authentication_response.data;
-
-    //         usersDict[user_id]["access_token"] = authentication_params["access_token"]
-
-    //         var access_token = usersDict[user_id]["access_token"];
-
-    //         // WRITING USERS IN JSON FILE
-    //         writeJsonFile('usersDict.json', usersDict)
-            
-    //         var header = { "Authorization": "Bearer " + String(access_token) };
-
-    //         var device_ids = Array()
-    //         device_ids.push(device_id)
-
-    //         // set used device
-    //         var active_player_body = {
-    //             "device_ids": device_ids
-    //         }
-    //         active_player_body = JSON.stringify(active_player_body)
-            
-    //         if(usersDict[user_id]["devices"])
-    //         console.log('PLAY - ACTIVATING DEVICE WITH ID: ' + device_id)
-    //         await axios.put('https://api.spotify.com/v1/me/player', active_player_body, {"headers": header})
-    
-
-    //         var isPlayerActive = false
-    //         while(!isPlayerActive){
-    //             var players_active = await axios.get('https://api.spotify.com/v1/me/player/devices', {"headers": header})
-    //             for(var i = 0 ; i < players_active.data.devices.length ; i++){
-    //                 if(players_active.data.devices[i].id == device_id && players_active.data.devices[i].is_active) {
-    //                     isPlayerActive = true
-    //                     console.log("PLAY - SELECTED DEVICE INFO ")
-    //                     console.log(players_active.data.devices[i])
-    //                 }
-    //             }
-
-    //         }
-            
-
-    //         // sending volume request
-    //         var queryParams = {
-    //             "volume_percent": volume_percent,
-    //             "device_id":device_id
-    //         }
-        
-    //         var queryString = encodeQueryData(queryParams);
-
-    //         console.log("PLAY - SETTING VOLUME : " + volume_percent)
-    //         await axios.put('https://api.spotify.com/v1/me/player/volume'+'?'+queryString, {}, {"headers": header})
-
-    //         // sending play request
-
-    //         playerActive = true;
-
-    //         console.log('PLAY - SENDING PLAY REQUEST FOR ', spotify_uri)
-    //         var playBody = { "uris":[spotify_uri] }
-    //         await axios.put('https://api.spotify.com/v1/me/player/play', playBody, {"headers": header})
- 
-
-    //         if(playerActive) {
-    //             // getting song info
-    //             var songId = spotify_uri.split(':')[2];
-    //             var songInfos = await axios.get('https://api.spotify.com/v1/tracks/'+songId, {"headers": header})
-
-    //             console.log('PLAY - Retrieved song info: it is', songInfos.data.name, 'by', songInfos.data.artists[0].name, '!')
-
-    //             await res.status(200).send(songInfos.data)
-    //         };
-    //     }
-    // } catch (error) {
-    //     //console.log('ERROR, ', error.response);
-    //     if(error.response.status === 404 || error.response.status === 403) {
-    //         res.status(error.response.status).end();
-    //     } else {
-    //         res.status(500).end();
-    //     };
-    // }
-    
-
 
 }
 

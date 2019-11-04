@@ -6,6 +6,10 @@ function encodeQueryParams(uri, params) {
     return uri + '?' + query_to_build.join('&');
 }
 
+function buildURI(uri, path){
+    return uri + '/' + path
+}
+
 function buildHeader(header_value){
     return {"headers" : {"Authorization": "Bearer "+ String(header_value)}};
 }
@@ -13,5 +17,6 @@ function buildHeader(header_value){
 
 module.exports = {
     encodeQueryParams,
-    buildHeader
+    buildHeader,
+    buildURI
 }
