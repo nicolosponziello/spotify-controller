@@ -46,15 +46,17 @@ class SpotifyController {
             if(user_info.status_code!== 200) return user_info.status_code
             
 
-            var user_devices = await this.getUserDevices(user_authentication_data.data.access_token)
+            
+            
+            if (!await this.users.isUserPresent(user_info.id)) {
+                await this.users.createUser(user_info.data.id, user_info.data.display_name, user_authentication_data.data.access_token, user_authentication_data.data.refresh_token,[] )
+            } else {
+                await this.users.updateUser(user_info.data.id, user_authentication_data.data.access_token, user_authentication_data.data.refresh_token, [])   
+            }
+            var user_devices = await this.getUserDevices(user_info.data.id)
+            if (user_devices.status_code != 200) return user_devices.status_code
             console.log("CALLBACK - GET USER DEVICE RESPONSE")
             console.log(user_devices)
-            if (user_devices.status_code != 200) return user_devices.status_code
-            if (!await this.users.isUserPresent(user_info.id)) {
-                await this.users.createUser(user_info.data.id, user_info.data.display_name, user_authentication_data.data.access_token, user_authentication_data.data.refresh_token, user_devices.data.devices)
-            } else {
-                await this.users.updateUser(user_info.data.id, user_authentication_data.data.access_token, user_authentication_data.data.refresh_token, user_devices.data.devices)   
-            }
             return await this.users.getUser(user_info.data.id)
         }
     }
@@ -97,11 +99,11 @@ class SpotifyController {
         }
     }
 
-    async getUserDevices(access_token) {
-        var header = utils.buildHeader(access_token)
-        var spotify_response = ''
+    async getUserDevices(id) {
+
+        var header = await utils.buildHeader(await this.users.getUserAccessToken(id))
         try {
-            spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_DEVICES, header)
+            var spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_DEVICES, header)
             if (spotify_response.status == 200) {
                 console.log('GET USER DEVICE - COMPLETED SUCCESSFULLY')
                 return {"status_code" : spotify_response.status, "data" : spotify_response.data}
@@ -134,10 +136,10 @@ class SpotifyController {
         
     }
 
-    async checkDeviceActive(access_token, device_id){
+    async checkDeviceActive(id, device_id){
         var isPlayerActive = false
         while(!isPlayerActive){
-            var user_devices = await this.getUserDevices(access_token)
+            var user_devices = await this.getUserDevices(id)
             if(user_devices.status_code !== 200) return user_devices.status_code
             for(var i = 0 ; i < user_devices.data.devices.length ; i++){
                 if(user_devices.data.devices[i].id == device_id && user_devices.data.devices[i].is_active) {
@@ -172,7 +174,7 @@ class SpotifyController {
     }
 
     async setVolumePercent(id, device_id, volume_percent){
-        var get_user_devices_response = await this.getUserDevices(await this.users.getUserAccessToken(id))
+        var get_user_devices_response = await this.getUserDevices(id)
         var header = await utils.buildHeader(await this.users.getUserAccessToken(id))
         if(get_user_devices_response.status_code != 200) return get_user_devices_response.status_code        
         this.users.updateUser(id, await this.users.getUserAccessToken(id), await this.users.getUserRefreshToken(id), get_user_devices_response.data)
@@ -238,7 +240,7 @@ class SpotifyController {
             var track_info_response = await this.getTrackInfo(user_id, spotify_uri_track)
             if(track_info_response.status_code !== 200) return track_info_response.status_code
             try {
-                await this.checkDeviceActive(await this.users.getUserAccessToken(user_id), device_id)
+                await this.checkDeviceActive(user_id, device_id)
                 var play_body = { "uris":[spotify_uri_track] }
                 var spotify_response = await axios.put(spotify_uri.SPOTIFY_PLAY_TRACK, play_body, header)
 

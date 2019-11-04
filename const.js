@@ -7,6 +7,7 @@
  const SPOTIFY_PLAY_TRACK = "https://api.spotify.com/v1/me/player/play"
  const SPOTIFY_TRACK_INFO = "https://api.spotify.com/v1/tracks"
  const SPOTIFY_PAUSE_TRACK = "https://api.spotify.com/v1/me/player/pause"
+ 
  module.exports = {
     SPOTIFY_AUTHENTICATION,
     SPOTIFY_AUTHORIZE,

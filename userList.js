@@ -36,17 +36,17 @@ class UserList {
 
     async getUserAccessToken(id){
         var user = await this.getUser(id)
-        return user[0].getAccessToken()
+        if(user.length > 0) return user[0].getAccessToken()
     }
 
     async getUserRefreshToken(id){
         var user = await this.getUser(id)
-        return user[0].getRefreshToken()
+        if(user.length > 0) return user[0].getRefreshToken()
     }
 
     async setUserAccessToken(id, access_token){
         var user = await this.getUser(id)
-        this.updateUser(id, access_token, user[0].getRefreshToken(), user[0].getDevices())
+        if(user.length > 0) this.updateUser(id, access_token, user[0].getRefreshToken(), user[0].getDevices())
     }
 
     async isDevicePresent(id, device_id){
