@@ -1,11 +1,10 @@
 {
   "name": "spotify-controller",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "package used to comunicate with spotify api",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server_spotify.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -18,7 +17,6 @@
   },
   "homepage": "https://github.com/Th4n02/spotify-controller#readme",
   "dependencies": {
-    "axios": "^0.19.0",
-    "express": "^4.17.1"
+    "axios": "^0.19.0"
   }
 }
