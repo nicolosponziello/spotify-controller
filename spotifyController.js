@@ -50,10 +50,7 @@ class SpotifyController {
             console.log("CALLBACK - GET USER DEVICE RESPONSE")
             console.log(user_devices)
             if (user_devices.status_code != 200) return user_devices.status_code
-
-            var user_found = await this.users.isUserPresent(user_info.id)
-
-            if (!user_found) {
+            if (!await this.users.isUserPresent(user_info.id)) {
                 await this.users.createUser(user_info.data.id, user_info.data.display_name, user_authentication_data.data.access_token, user_authentication_data.data.refresh_token, user_devices.data.devices)
             } else {
                 await this.users.updateUser(user_info.data.id, user_authentication_data.data.access_token, user_authentication_data.data.refresh_token, user_devices.data.devices)   
@@ -73,8 +70,11 @@ class SpotifyController {
         };
         try {
             authentication_response = await axios.post(spotify_uri.SPOTIFY_AUTHENTICATION, qs.stringify(post_body),)
-            console.log("AUTHENTICATION")
-            if(authentication_response.status == 200) return {"status_code" : authentication_response.status, "data" :authentication_response.data};
+            
+            if(authentication_response.status == 200) {
+                console.log("AUTHENTICATION - COMPLETED SUCCESSFULLY")
+                return {"status_code" : authentication_response.status, "data" :authentication_response.data};
+            }
         } catch (error) {
             console.log('AUTHENTICATION - ERROR', error)
             return {"status_code" : error.status, "data" : 'error'}
@@ -87,8 +87,10 @@ class SpotifyController {
         var spotify_response = ''
         try {
             spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_INFO, header)
-            console.log("GET USER INFO")
-            if (spotify_response.status == 200) return {"status_code" : spotify_response.status, "data" : spotify_response.data}
+            if (spotify_response.status == 200) {
+                console.log("GET USER INFO - COMPLETED SUCCESSFULLY")
+                return {"status_code" : spotify_response.status, "data" : spotify_response.data}
+            } 
         } catch (error) {
             console.log('GET USER INFO - ERROR', error)
             return {"status_code" : error.status, "data" : 'error'}
@@ -100,7 +102,10 @@ class SpotifyController {
         var spotify_response = ''
         try {
             spotify_response = await axios.get(spotify_uri.SPOTIFY_USER_DEVICES, header)
-            if (spotify_response.status == 200) return {"status_code" : spotify_response.status, "data" : spotify_response.data}
+            if (spotify_response.status == 200) {
+                console.log('GET USER DEVICE - COMPLETED SUCCESSFULLY')
+                return {"status_code" : spotify_response.status, "data" : spotify_response.data}
+            }
         } catch (error) {
             console.log('GET USER DEVICE - ERROR', error)
             return {"status_code" : error.status, "data" : 'error'}
@@ -118,7 +123,7 @@ class SpotifyController {
         try {
             var spotify_response = await axios.post(spotify_uri.SPOTIFY_AUTHENTICATION, qs.stringify(post_body));
             if(spotify_response.status === 200){
-                console.log("REFRESH TOKEN - token refreshed, new access token: ", spotify_response.data.access_token)
+                console.log("REFRESH TOKEN - TOKEN REFRESHED SUCCESSFULLY: ", spotify_response.data.access_token)
                 this.users.setUserAccessToken(id, spotify_response.data.access_token)
                 return {"status_code" : spotify_response.status}
             }
@@ -136,7 +141,7 @@ class SpotifyController {
             if(user_devices.status_code !== 200) return user_devices.status_code
             for(var i = 0 ; i < user_devices.data.devices.length ; i++){
                 if(user_devices.data.devices[i].id == device_id && user_devices.data.devices[i].is_active) {
-                    console.log("CHECK ACTIVE DEVICE - device: ", device_id, " is active")
+                    console.log("CHECK ACTIVE DEVICE - DEVICE IS ACTIVE: ", device_id)
                     isPlayerActive = true
                 }
             }
@@ -156,9 +161,10 @@ class SpotifyController {
             active_player_body = JSON.stringify(active_player_body)
             try {
                 var spotify_response = await axios.put(spotify_uri.SPOTIFY_SET_PLAYER, active_player_body, header)
-                console.log("SET PLAYER DEVICE - device id: ", device_id)
-                if (spotify_response.status == 204)  return {"status_code" : spotify_response.status}
-
+                if (spotify_response.status == 204)  {
+                    console.log("SET DEVICE DEVICE - DEVICE SET UP CORRECTLY: ", device_id)
+                    return {"status_code" : spotify_response.status}
+                }
             } catch (error) {
                 console.log('SET DEVICE PLAYER - ERROR', error)
                 return {"status_code" : error.status, "data" : 'error'}
@@ -179,9 +185,10 @@ class SpotifyController {
         var url = utils.encodeQueryParams(spotify_uri.SPOTIFY_SET_VOLUME, query_params)
         try {
             var spotify_response = await axios.put(url, {}, header)
-            console.log("SET VOLUME PERCENT - device id: ", device_id, " volume: ", volume_percent, " %")
-
-            if(spotify_response.status == 204) return {"status_code" : spotify_response.status, "data" : spotify_response.data }
+            if(spotify_response.status == 204) {
+                console.log("SET VOLUME PERCENT - VOLUME SET UP CORRECTLY, device id: ", device_id, " volume: ", volume_percent, " %")
+                return {"status_code" : spotify_response.status, "data" : spotify_response.data }
+            }
         } catch (error) {
             console.log('SET DEVICE PLAYER - ERROR', error)
             return {"status_code" : error.status, "data" : 'error'}
@@ -235,7 +242,10 @@ class SpotifyController {
                 var play_body = { "uris":[spotify_uri_track] }
                 var spotify_response = await axios.put(spotify_uri.SPOTIFY_PLAY_TRACK, play_body, header)
 
-                if(spotify_response.status === 204) return {"status_code" : spotify_response.status, "data" : track_info_response.data }
+                if(spotify_response.status === 204) {
+                    console.log("PLAY TRACK - SUCCESSFULLY REPRODUCED")
+                    return {"status_code" : spotify_response.status, "data" : track_info_response.data }
+                }
             } catch (error) {
                 console.log('PLAY TRACK - ERROR', error)
                 return {"status_code" : error.status, "data" : 'error'}
@@ -256,7 +266,7 @@ class SpotifyController {
             try {
                 var spotify_response = await axios.put(spotify_uri.SPOTIFY_PAUSE_TRACK, {}, header)
                 if(spotify_response.status == 204) {
-                    console.log("PAUSE - PAUSE COMPLETE")
+                    console.log("PAUSE TRACK - SUCCESSFULLY PAUSED")
                     return {"status_code" : spotify_response.status}  
                 } 
             } catch (error) {
