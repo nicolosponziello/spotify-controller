@@ -162,7 +162,7 @@ class SpotifyController {
             try {
                 var spotify_response = await axios.put(spotify_uri.SPOTIFY_SET_PLAYER, active_player_body, header)
                 if (spotify_response.status == 204)  {
-                    console.log("SET DEVICE DEVICE - DEVICE SET UP CORRECTLY: ", device_id)
+                    console.log("SET DEVICE - DEVICE SET UP CORRECTLY: ", device_id)
                     return {"status_code" : spotify_response.status}
                 }
             } catch (error) {
@@ -190,7 +190,7 @@ class SpotifyController {
                 return {"status_code" : spotify_response.status, "data" : spotify_response.data }
             }
         } catch (error) {
-            console.log('SET DEVICE PLAYER - ERROR', error)
+            console.log('SET VOLUME PLAYER - ERROR', error)
             return {"status_code" : error.status, "data" : 'error'}
         }
 
