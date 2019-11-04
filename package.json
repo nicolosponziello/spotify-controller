@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Th4n02/spotify-controller.git"
+    "url": "git+https://github.com/Th4n05/spotify-controller.git"
   },
   "author": "Anis Lico",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Th4n02/spotify-controller/issues"
+    "url": "https://github.com/Th4n05/spotify-controller/issues"
   },
-  "homepage": "https://github.com/Th4n02/spotify-controller#readme",
+  "homepage": "https://github.com/Th4n05/spotify-controller#readme",
   "dependencies": {
     "axios": "^0.19.0"
   }
