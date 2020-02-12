@@ -1,30 +1,23 @@
 // Utility function for building queries from an Object.
-function encodeQueryParams(uri, params) {
+export const encodeQueryParams = (uri:string, params:any):string => {
     const query_to_build = [];
     for (let parameter in params)
     query_to_build.push(encodeURIComponent(parameter) + '=' + encodeURIComponent(params[parameter]));
     return uri + '?' + query_to_build.join('&');
 }
 
-function buildURI(uri, path){
+export const buildURI = (uri:string, path:string): string => {
     return uri + '/' + path
 }
 
-function buildHeader(header_value){
-    return {"headers" : {"Authorization": "Bearer "+ String(header_value)}};
+export const buildHeader = (header_value:string):any => {
+    return {"headers" : {"Authorization": "Bearer "+ header_value}};
 }
 
-function buildQueryString(text){
+export const buildQueryString = (text:string):string =>{
     let res = "";
     let splitted = text.split(" ");
     splitted.forEach(word => res += "+" + word);
     return res;
 }
 
-
-module.exports = {
-    encodeQueryParams,
-    buildHeader,
-    buildURI,
-    buildQueryString
-}

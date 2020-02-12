@@ -2,4 +2,5 @@ node_modules
 server_spotify.js
 data.json
 package-lock.json
+build
 
