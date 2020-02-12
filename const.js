@@ -7,6 +7,7 @@
  const SPOTIFY_PLAY_TRACK = "https://api.spotify.com/v1/me/player/play"
  const SPOTIFY_TRACK_INFO = "https://api.spotify.com/v1/tracks"
  const SPOTIFY_PAUSE_TRACK = "https://api.spotify.com/v1/me/player/pause"
+ const SPOTIFY_SEARCH_TRACK = "https://api.spotify.com/v1/search?type=track&"
  
  module.exports = {
     SPOTIFY_AUTHENTICATION,
@@ -17,5 +18,6 @@
     SPOTIFY_SET_VOLUME,
     SPOTIFY_PLAY_TRACK,
     SPOTIFY_TRACK_INFO,
-    SPOTIFY_PAUSE_TRACK
+    SPOTIFY_PAUSE_TRACK,
+    SPOTIFY_SEARCH_TRACK
  }

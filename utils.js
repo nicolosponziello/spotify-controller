@@ -14,9 +14,17 @@ function buildHeader(header_value){
     return {"headers" : {"Authorization": "Bearer "+ String(header_value)}};
 }
 
+function buildQueryString(text){
+    let res = "";
+    let splitted = text.split(" ");
+    splitted.forEach(word => res += "+" + word);
+    return res;
+}
+
 
 module.exports = {
     encodeQueryParams,
     buildHeader,
-    buildURI
+    buildURI,
+    buildQueryString
 }

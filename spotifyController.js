@@ -16,7 +16,7 @@ class SpotifyController {
     }
 
 
-    async login(req, res) {
+    async login() {
         console.log('LOGIN - REQUEST LOGIN');
         var query_params = {
             "client_id": this.client_id,
@@ -275,6 +275,33 @@ class SpotifyController {
                 console.log('PAUSE TRACK - ERROR', error)
                 return {"status_code" : error.status, "data" : 'error'}
             }
+        }
+    }
+
+    async searchTrack(user_id, text){
+        var refresh_token_response = await this.refreshToken(user_id);
+        if(refresh_token_response.status_code != 200){
+            return {"status_code" : refresh_token_response.status_code};
+        }
+        var header = await utils.buildHeader(await this.users.getUserAccessToken(user_id));
+        try {
+            let queryUrl = spotify_uri.SPOTIFY_SEARCH_TRACK + utils.buildQueryString(text);
+            var spotify_response = await axios.get(queryUrl, header);
+            if(spotify_response.status == 200){
+                //OK
+                let data = JSON.parse(spotify_response.data);
+                return data.items.map(song => ({
+                        "name": song.name,
+                        "artist": song.artists.name,
+                        "album": song.album.name,
+                        "duration_ms": song.duration_ms,
+                        "uri": song.uri
+                }));
+            }else{
+                return {"error": spotify_response.status};
+            }
+        }catch(e){
+            return {"exception": e};
         }
     }
 
